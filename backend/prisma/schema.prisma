@@ -1,0 +1,178 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatar    String?
+  
+  // Profile information
+  cookingSkillLevel String  @default("beginner") // beginner, intermediate, advanced
+  bio               String?
+  
+  // Preferences
+  dietaryRestrictions DietaryRestriction[]
+  allergies          Allergy[]
+  favoriteRecipes    Recipe[]
+  
+  // Shopping lists
+  shoppingLists ShoppingList[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("users")
+}
+
+model DietaryRestriction {
+  id     String @id @default(cuid())
+  name   String @unique // vegetarian, vegan, gluten-free, keto, etc.
+  users  User[]
+  
+  @@map("dietary_restrictions")
+}
+
+model Allergy {
+  id    String @id @default(cuid())
+  name  String @unique // nuts, dairy, eggs, shellfish, etc.
+  users User[]
+  
+  @@map("allergies")
+}
+
+model Recipe {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  instructions String
+  prepTime     Int      // in minutes
+  cookTime     Int      // in minutes
+  servings     Int
+  difficulty   String   @default("easy") // easy, medium, hard
+  cuisine      String?  // italian, mexican, asian, etc.
+  imageUrl     String?
+  
+  // Nutritional information
+  calories     Int?
+  protein      Float?
+  carbs        Float?
+  fat          Float?
+  fiber        Float?
+  
+  // Relationships
+  ingredients  RecipeIngredient[]
+  favoritedBy  User[]
+  tags         RecipeTag[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("recipes")
+}
+
+model Ingredient {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  category    String? // vegetables, proteins, grains, spices, etc.
+  unit        String  @default("piece") // cup, tablespoon, gram, piece, etc.
+  
+  // Nutritional info per unit
+  caloriesPerUnit Float?
+  proteinPerUnit  Float?
+  carbsPerUnit    Float?
+  fatPerUnit      Float?
+  
+  // Common allergens this ingredient contains
+  allergens       String? // comma-separated list
+  
+  // Relationships
+  recipeIngredients RecipeIngredient[]
+  substitutions     IngredientSubstitution[] @relation("OriginalIngredient")
+  substitutes       IngredientSubstitution[] @relation("SubstituteIngredient")
+  shoppingListItems ShoppingListItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("ingredients")
+}
+
+model RecipeIngredient {
+  id           String @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  unit         String
+  notes        String? // optional preparation notes
+  
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+  
+  @@unique([recipeId, ingredientId])
+  @@map("recipe_ingredients")
+}
+
+model IngredientSubstitution {
+  id                 String @id @default(cuid())
+  originalId         String
+  substituteId       String
+  ratio              Float  @default(1.0) // how much substitute to use (1.0 = 1:1 ratio)
+  dietaryBenefit     String? // "vegan", "gluten-free", etc.
+  flavorProfile      String? // "similar", "milder", "stronger"
+  
+  original   Ingredient @relation("OriginalIngredient", fields: [originalId], references: [id])
+  substitute Ingredient @relation("SubstituteIngredient", fields: [substituteId], references: [id])
+  
+  @@unique([originalId, substituteId])
+  @@map("ingredient_substitutions")
+}
+
+model RecipeTag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  recipes Recipe[]
+  
+  @@map("recipe_tags")
+}
+
+model ShoppingList {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  completed Boolean  @default(false)
+  
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ShoppingListItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("shopping_lists")
+}
+
+model ShoppingListItem {
+  id             String  @id @default(cuid())
+  shoppingListId String
+  ingredientId   String
+  quantity       Float
+  unit           String
+  purchased      Boolean @default(false)
+  notes          String?
+  
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient   @relation(fields: [ingredientId], references: [id])
+  
+  @@unique([shoppingListId, ingredientId])
+  @@map("shopping_list_items")
+} 
