@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, LoginFormData, RegisterFormData } from '../types';
 import { AuthService } from '../services/authService';
 
@@ -30,6 +31,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -41,17 +43,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
           console.error('Failed to get current user:', error);
           AuthService.logout();
+          // Clear all cached data if token is invalid
+          queryClient.clear();
         }
       }
       setIsLoading(false);
     };
 
     initializeAuth();
-  }, []);
+  }, [queryClient]);
 
   const login = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
+      // Clear any existing cached data before login
+      queryClient.clear();
+      
       const response = await AuthService.login(data);
       setUser(response.user);
     } catch (error) {
@@ -64,6 +71,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
+      // Clear any existing cached data before registration
+      queryClient.clear();
+      
       const response = await AuthService.register(data);
       setUser(response.user);
     } catch (error) {
@@ -74,18 +84,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear authentication data
     AuthService.logout();
     setUser(null);
+    
+    // CRITICAL: Clear all React Query cache to prevent data bleeding between users
+    queryClient.clear();
+    
+    // Clear any additional local storage that might contain user-specific data
+    localStorage.removeItem('userActivityHistory');
   };
 
   const updateUser = (updatedUser: User) => {
     setUser(updatedUser);
+    // Invalidate user-related queries to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    queryClient.invalidateQueries({ queryKey: ['recipes'] });
   };
 
   const refreshUser = async () => {
     try {
       const currentUser = await AuthService.getCurrentUser();
       setUser(currentUser);
+      // Invalidate all queries to ensure fresh data for the refreshed user
+      queryClient.invalidateQueries();
     } catch (error) {
       console.error('Failed to refresh user:', error);
       logout();

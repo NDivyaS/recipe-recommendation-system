@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useRecipe, useToggleFavorite } from '../hooks/useRecipes';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AddToShoppingListModal from '../components/AddToShoppingListModal';
+import SubstitutionSuggestions from '../components/SubstitutionSuggestions';
+import IngredientSubstitutionModal from '../components/IngredientSubstitutionModal';
+import SubstitutionSummary from '../components/SubstitutionSummary';
 import { 
   ChefHat, 
   Clock, 
@@ -14,7 +18,8 @@ import {
   ShoppingCart,
   AlertTriangle,
   CheckCircle,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 
 const RecipeDetailPage: React.FC = () => {
@@ -22,11 +27,91 @@ const RecipeDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: recipe, isLoading, error, isError } = useRecipe(id!);
   const toggleFavoriteMutation = useToggleFavorite();
+  const [isShoppingModalOpen, setIsShoppingModalOpen] = useState(false);
+  const [isSubstitutionModalOpen, setIsSubstitutionModalOpen] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<any>(null);
+  const [substitutions, setSubstitutions] = useState<Record<string, any>>({});
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleFavoriteClick = () => {
     if (recipe) {
       toggleFavoriteMutation.mutate(recipe.id);
     }
+  };
+
+  const handleShoppingListSuccess = (successMessage: string) => {
+    setMessage({
+      type: 'success',
+      text: successMessage
+    });
+    
+    // Clear message after 5 seconds
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const handleIngredientSubstitution = (ingredient: any) => {
+    setSelectedIngredient(ingredient);
+    setIsSubstitutionModalOpen(true);
+  };
+
+  const handleSubstitutionApplied = (originalIngredient: any, substitute: any, adjustedQuantity: number) => {
+    setSubstitutions(prev => ({
+      ...prev,
+      [originalIngredient.ingredientId]: {
+        original: originalIngredient,
+        substitute,
+        adjustedQuantity
+      }
+    }));
+    
+    setMessage({
+      type: 'success',
+      text: `Substituted ${originalIngredient.ingredient.name} with ${substitute.name}`
+    });
+    
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const handleSuggestionApplied = (suggestion: any, selectedSubstitute: any) => {
+    const adjustedQuantity = suggestion.quantity * selectedSubstitute.substitutionInfo.ratio;
+    
+    setSubstitutions(prev => ({
+      ...prev,
+      [suggestion.original.id]: {
+        original: {
+          ingredientId: suggestion.original.id,
+          ingredient: suggestion.original,
+          quantity: suggestion.quantity,
+          unit: suggestion.unit
+        },
+        substitute: selectedSubstitute,
+        adjustedQuantity
+      }
+    }));
+    
+    setMessage({
+      type: 'success',
+      text: `Applied substitution: ${suggestion.original.name} → ${selectedSubstitute.name}`
+    });
+    
+    setTimeout(() => setMessage(null), 5000);
+  };
+
+  const removeSubstitution = (ingredientId: string) => {
+    setSubstitutions(prev => {
+      const newSubs = { ...prev };
+      delete newSubs[ingredientId];
+      return newSubs;
+    });
+  };
+
+  const clearAllSubstitutions = () => {
+    setSubstitutions({});
+    setMessage({
+      type: 'success',
+      text: 'All substitutions cleared. Recipe restored to original ingredients.'
+    });
+    setTimeout(() => setMessage(null), 5000);
   };
 
   const formatTime = (minutes: number) => {
@@ -82,6 +167,30 @@ const RecipeDetailPage: React.FC = () => {
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back
       </button>
+
+      {/* Success Message */}
+      {message && (
+        <div className={`p-4 rounded-lg flex items-center space-x-2 ${
+          message.type === 'success' 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          <CheckCircle className="h-5 w-5" />
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      {/* Smart Substitution Suggestions */}
+      <SubstitutionSuggestions
+        recipe={recipe}
+        onApplySuggestion={handleSuggestionApplied}
+      />
+
+      {/* Substitution Summary */}
+      <SubstitutionSummary
+        substitutions={substitutions}
+        onClearAll={clearAllSubstitutions}
+      />
 
       {/* Recipe Header */}
       <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
@@ -257,6 +366,7 @@ const RecipeDetailPage: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-neutral-900">Ingredients</h2>
               <button
+                onClick={() => setIsShoppingModalOpen(true)}
                 className="btn btn-outline btn-sm"
                 title="Add to shopping list"
               >
@@ -267,40 +377,106 @@ const RecipeDetailPage: React.FC = () => {
 
             <div className="space-y-3">
               {recipe.ingredients && recipe.ingredients.length > 0 ? (
-                recipe.ingredients.map((ingredient, index) => (
-                  <div
-                    key={ingredient.id || index}
-                    className="flex items-start space-x-3 p-3 rounded-lg border border-neutral-100 hover:bg-neutral-50 transition-colors"
-                  >
-                    <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center text-xs font-medium text-primary-600 mt-0.5">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-neutral-900">
-                          {ingredient.quantity} {ingredient.unit}
-                        </span>
-                        <span className="text-neutral-600">
-                          {ingredient.ingredient?.name}
-                        </span>
-                      </div>
-                      {ingredient.notes && (
-                        <p className="text-sm text-neutral-500 mt-1">{ingredient.notes}</p>
-                      )}
-                      {ingredient.ingredient?.allergens && ingredient.ingredient.allergens.length > 0 && (
-                        <div className="flex items-center space-x-1 mt-1">
-                          <AlertTriangle className="h-3 w-3 text-amber-500" />
-                          <span className="text-xs text-amber-600">
-                            Contains: {Array.isArray(ingredient.ingredient.allergens) 
-                              ? ingredient.ingredient.allergens.join(', ')
-                              : ingredient.ingredient.allergens
-                            }
-                          </span>
+                recipe.ingredients.map((ingredient, index) => {
+                  const substitution = substitutions[ingredient.ingredientId];
+                  const isSubstituted = !!substitution;
+
+                  return (
+                    <div
+                      key={ingredient.id || index}
+                      className={`p-3 rounded-lg border transition-colors ${
+                        isSubstituted 
+                          ? 'border-green-200 bg-green-50' 
+                          : 'border-neutral-100 hover:bg-neutral-50'
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center text-xs font-medium text-primary-600 mt-0.5">
+                          {index + 1}
                         </div>
-                      )}
+                        <div className="flex-1 min-w-0">
+                          {isSubstituted ? (
+                            <div className="space-y-2">
+                              {/* Original ingredient (crossed out) */}
+                              <div className="flex items-center space-x-2 opacity-60">
+                                <span className="font-medium text-neutral-500 line-through">
+                                  {ingredient.quantity} {ingredient.unit}
+                                </span>
+                                <span className="text-neutral-500 line-through">
+                                  {ingredient.ingredient?.name}
+                                </span>
+                              </div>
+                              {/* Substituted ingredient */}
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium text-green-800">
+                                  {substitution.adjustedQuantity.toFixed(2)} {substitution.substitute.unit}
+                                </span>
+                                <span className="text-green-700">
+                                  {substitution.substitute.name}
+                                </span>
+                                <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                                  <CheckCircle className="h-3 w-3" />
+                                  <span>Substituted</span>
+                                </div>
+                              </div>
+                              {/* Substitution benefits */}
+                              {substitution.substitute.substitutionInfo?.dietaryBenefit && (
+                                <div className="text-xs text-green-600">
+                                  {substitution.substitute.substitutionInfo.dietaryBenefit}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-neutral-900">
+                                {ingredient.quantity} {ingredient.unit}
+                              </span>
+                              <span className="text-neutral-600">
+                                {ingredient.ingredient?.name}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {ingredient.notes && (
+                            <p className="text-sm text-neutral-500 mt-1">{ingredient.notes}</p>
+                          )}
+                          
+                          {ingredient.ingredient?.allergens && ingredient.ingredient.allergens.length > 0 && (
+                            <div className="flex items-center space-x-1 mt-1">
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                              <span className="text-xs text-amber-600">
+                                Contains: {Array.isArray(ingredient.ingredient.allergens) 
+                                  ? ingredient.ingredient.allergens.join(', ')
+                                  : ingredient.ingredient.allergens
+                                }
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Substitution Actions */}
+                        <div className="flex-shrink-0">
+                          {isSubstituted ? (
+                            <button
+                              onClick={() => removeSubstitution(ingredient.ingredientId)}
+                              className="text-xs text-neutral-500 hover:text-red-600 px-2 py-1 rounded"
+                            >
+                              Revert
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleIngredientSubstitution(ingredient)}
+                              className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              <span>Substitute</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-neutral-500 text-center py-4">No ingredients listed</p>
               )}
@@ -353,16 +529,30 @@ const RecipeDetailPage: React.FC = () => {
           {recipe.isFavorited ? 'Favorited' : 'Add to Favorites'}
         </button>
 
-        <button className="btn btn-outline">
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Add to Shopping List
-        </button>
-
-        <button className="btn btn-ghost">
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Share Recipe
-        </button>
       </div>
+
+      {/* Add to Shopping List Modal */}
+      {recipe && (
+        <AddToShoppingListModal
+          isOpen={isShoppingModalOpen}
+          onClose={() => setIsShoppingModalOpen(false)}
+          recipe={recipe}
+          onSuccess={handleShoppingListSuccess}
+        />
+      )}
+
+      {/* Ingredient Substitution Modal */}
+      {selectedIngredient && (
+        <IngredientSubstitutionModal
+          isOpen={isSubstitutionModalOpen}
+          onClose={() => {
+            setIsSubstitutionModalOpen(false);
+            setSelectedIngredient(null);
+          }}
+          recipeIngredient={selectedIngredient}
+          onSubstitute={handleSubstitutionApplied}
+        />
+      )}
     </div>
   );
 };

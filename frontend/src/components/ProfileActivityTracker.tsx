@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserService, ProfileActivity } from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
 import { Activity, Clock, User, Leaf, Shield, RotateCcw, Trash2 } from 'lucide-react';
 
 interface ProfileActivityTrackerProps {
@@ -9,18 +10,23 @@ interface ProfileActivityTrackerProps {
 const ProfileActivityTracker: React.FC<ProfileActivityTrackerProps> = ({ refreshTrigger }) => {
   const [activities, setActivities] = useState<ProfileActivity[]>([]);
   const [showAll, setShowAll] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
-    loadActivities();
-  }, [refreshTrigger]); // Refresh when trigger changes
+    if (user) {
+      loadActivities();
+    }
+  }, [user, refreshTrigger]); // Refresh when user changes or trigger changes
 
   const loadActivities = () => {
-    const activityHistory = UserService.getActivityHistory();
+    if (!user) return;
+    const activityHistory = UserService.getActivityHistory(user.id);
     setActivities(activityHistory);
   };
 
   const clearHistory = () => {
-    UserService.clearActivityHistory();
+    if (!user) return;
+    UserService.clearActivityHistory(user.id);
     setActivities([]);
   };
 
@@ -61,6 +67,11 @@ const ProfileActivityTracker: React.FC<ProfileActivityTrackerProps> = ({ refresh
   };
 
   const displayedActivities = showAll ? activities : activities.slice(0, 5);
+
+  // Don't render if no user is logged in
+  if (!user) {
+    return null;
+  }
 
   if (activities.length === 0) {
     return (

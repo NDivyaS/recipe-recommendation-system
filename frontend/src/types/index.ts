@@ -54,6 +54,11 @@ export interface Ingredient {
   unit: string;
   allergens?: string[];
   dietaryBenefit?: string;
+  // Nutritional info per unit
+  caloriesPerUnit?: number;
+  proteinPerUnit?: number;
+  carbsPerUnit?: number;
+  fatPerUnit?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +84,7 @@ export interface ShoppingList {
   id: string;
   name: string;
   userId: string;
+  completed: boolean;
   createdAt: string;
   updatedAt: string;
   items?: ShoppingListItem[];
@@ -90,9 +96,41 @@ export interface ShoppingListItem {
   ingredientId: string;
   quantity: number;
   unit: string;
-  isPurchased: boolean;
+  purchased: boolean;
   notes?: string;
   ingredient?: Ingredient;
+}
+
+// Ingredient Substitution Types
+export interface IngredientSubstitution {
+  id: string;
+  originalId: string;
+  substituteId: string;
+  ratio: number;
+  dietaryBenefit?: string;
+  flavorProfile?: string;
+  original?: Ingredient;
+  substitute?: Ingredient;
+}
+
+export interface SubstituteIngredient extends Ingredient {
+  substitutionInfo: {
+    ratio: number;
+    dietaryBenefit?: string;
+    flavorProfile?: string;
+  };
+}
+
+export interface IngredientSubstitutes {
+  original: Ingredient;
+  substitutes: SubstituteIngredient[];
+}
+
+export interface SubstitutionSuggestion {
+  original: Ingredient;
+  quantity: number;
+  unit: string;
+  substitutes: SubstituteIngredient[];
 }
 
 // API Response Types
