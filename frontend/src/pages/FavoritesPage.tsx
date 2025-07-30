@@ -23,7 +23,7 @@ const FavoritesPage: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const recipes = data?.recipes || [];
+  const recipes = data?.data || [];
   const pagination = data?.pagination;
 
   return (

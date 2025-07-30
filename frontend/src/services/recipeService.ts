@@ -50,8 +50,23 @@ export class RecipeService {
       }
     });
 
-    const response = await api.get<PaginatedResponse<Recipe>>(`/recipes?${queryParams.toString()}`);
-    return response.data;
+    const response = await api.get<{
+      recipes: Recipe[];
+      pagination: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
+    }>(`/recipes?${queryParams.toString()}`);
+    
+    // Transform the response to match our PaginatedResponse type
+    return {
+      data: response.data.recipes,
+      pagination: response.data.pagination
+    };
   }
 
   // Get single recipe by ID
@@ -85,8 +100,23 @@ export class RecipeService {
 
   // Get user's favorite recipes
   static async getFavoriteRecipes(page: number = 1, limit: number = 20): Promise<PaginatedResponse<Recipe>> {
-    const response = await api.get<PaginatedResponse<Recipe>>(`/recipes/favorites/my?page=${page}&limit=${limit}`);
-    return response.data;
+    const response = await api.get<{
+      recipes: Recipe[];
+      pagination: {
+        page: number;
+        limit: number;
+        totalCount: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+      };
+    }>(`/recipes/favorites/my?page=${page}&limit=${limit}`);
+    
+    // Transform the response to match our PaginatedResponse type
+    return {
+      data: response.data.recipes,
+      pagination: response.data.pagination
+    };
   }
 
   // Get popular cuisines (for filtering)

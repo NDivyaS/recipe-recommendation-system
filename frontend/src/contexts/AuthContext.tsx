@@ -1,19 +1,27 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, LoginData, RegisterData } from '../types';
+import { User, LoginFormData, RegisterFormData } from '../types';
 import { AuthService } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
-  login: (data: LoginData) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  isLoading: boolean;
+  login: (data: LoginFormData) => Promise<void>;
+  register: (data: RegisterFormData) => Promise<void>;
   logout: () => void;
-  updateUser: (data: Partial<User>) => Promise<void>;
+  updateUser: (user: User) => void;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -24,38 +32,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const initializeAuth = async () => {
+      const token = AuthService.getToken();
+      if (token) {
+        try {
+          const currentUser = await AuthService.getCurrentUser();
+          setUser(currentUser);
+        } catch (error) {
+          console.error('Failed to get current user:', error);
+          AuthService.logout();
+        }
+      }
+      setIsLoading(false);
+    };
+
     initializeAuth();
   }, []);
 
-  const initializeAuth = async () => {
-    try {
-      if (AuthService.isAuthenticated()) {
-        const userData = await AuthService.getCurrentUser();
-        setUser(userData);
-      }
-    } catch (error) {
-      // Token might be invalid, clear auth data
-      AuthService.logout();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (data: LoginData) => {
+  const login = async (data: LoginFormData) => {
+    setIsLoading(true);
     try {
       const response = await AuthService.login(data);
       setUser(response.user);
     } catch (error) {
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterFormData) => {
+    setIsLoading(true);
     try {
       const response = await AuthService.register(data);
       setUser(response.user);
     } catch (error) {
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,28 +78,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
-  const updateUser = async (data: Partial<User>) => {
-    try {
-      const updatedUser = await AuthService.updateProfile(data);
-      setUser(updatedUser);
-    } catch (error) {
-      throw error;
-    }
+  const updateUser = (updatedUser: User) => {
+    setUser(updatedUser);
   };
 
   const refreshUser = async () => {
     try {
-      const userData = await AuthService.getCurrentUser();
-      setUser(userData);
+      const currentUser = await AuthService.getCurrentUser();
+      setUser(currentUser);
     } catch (error) {
-      throw error;
+      console.error('Failed to refresh user:', error);
+      logout();
     }
   };
 
   const value: AuthContextType = {
     user,
-    isLoading,
     isAuthenticated: !!user,
+    isLoading,
     login,
     register,
     logout,
@@ -93,17 +103,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }; 

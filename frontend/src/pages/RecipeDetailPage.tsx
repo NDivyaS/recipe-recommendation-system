@@ -140,7 +140,7 @@ const RecipeDetailPage: React.FC = () => {
           </div>
 
           {/* Rating */}
-          {recipe.rating && (
+          {recipe.rating && recipe.rating > 0 && (
             <div className="absolute bottom-4 left-4 bg-black bg-opacity-75 text-white px-3 py-2 rounded-full flex items-center space-x-1">
               <Star className="h-4 w-4 fill-current text-yellow-400" />
               <span className="font-medium">{recipe.rating.toFixed(1)}</span>
@@ -291,7 +291,10 @@ const RecipeDetailPage: React.FC = () => {
                         <div className="flex items-center space-x-1 mt-1">
                           <AlertTriangle className="h-3 w-3 text-amber-500" />
                           <span className="text-xs text-amber-600">
-                            Contains: {ingredient.ingredient.allergens.join(', ')}
+                            Contains: {Array.isArray(ingredient.ingredient.allergens) 
+                              ? ingredient.ingredient.allergens.join(', ')
+                              : ingredient.ingredient.allergens
+                            }
                           </span>
                         </div>
                       )}

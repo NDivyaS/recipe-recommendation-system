@@ -1,15 +1,15 @@
-// User types
+// User and Authentication Types
 export interface User {
   id: string;
-  email: string;
   name: string;
-  avatar?: string;
+  email: string;
   cookingSkillLevel: 'beginner' | 'intermediate' | 'advanced';
   bio?: string;
-  dietaryRestrictions: DietaryRestriction[];
-  allergies: Allergy[];
+  avatar?: string;
   createdAt: string;
   updatedAt: string;
+  dietaryRestrictions?: DietaryRestriction[];
+  allergies?: Allergy[];
 }
 
 export interface DietaryRestriction {
@@ -22,14 +22,14 @@ export interface Allergy {
   name: string;
 }
 
-// Recipe types
+// Recipe Types
 export interface Recipe {
   id: string;
   title: string;
-  description?: string;
-  instructions: string;
-  prepTime: number;
-  cookTime: number;
+  description: string;
+  instructions: string | string[];
+  prepTime?: number;
+  cookTime?: number;
   servings: number;
   difficulty: 'easy' | 'medium' | 'hard';
   cuisine?: string;
@@ -39,61 +39,49 @@ export interface Recipe {
   carbs?: number;
   fat?: number;
   fiber?: number;
-  ingredients: RecipeIngredient[];
-  tags: RecipeTag[];
+  rating?: number;
+  createdAt: string;
+  updatedAt: string;
+  ingredients?: RecipeIngredient[];
+  tags?: RecipeTag[];
   isFavorited?: boolean;
+}
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  category: string;
+  unit: string;
+  allergens?: string[];
+  dietaryBenefit?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface RecipeIngredient {
   id: string;
+  recipeId: string;
+  ingredientId: string;
   quantity: number;
   unit: string;
   notes?: string;
-  ingredient: Ingredient;
+  ingredient?: Ingredient;
 }
 
 export interface RecipeTag {
   id: string;
   name: string;
+  recipeId?: string;
 }
 
-// Ingredient types
-export interface Ingredient {
-  id: string;
-  name: string;
-  category?: string;
-  unit: string;
-  caloriesPerUnit?: number;
-  proteinPerUnit?: number;
-  carbsPerUnit?: number;
-  fatPerUnit?: number;
-  allergens?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface IngredientSubstitution {
-  id: string;
-  originalId: string;
-  substituteId: string;
-  ratio: number;
-  dietaryBenefit?: string;
-  flavorProfile?: string;
-  original: Ingredient;
-  substitute: Ingredient;
-}
-
-// Shopping list types
+// Shopping List Types
 export interface ShoppingList {
   id: string;
   name: string;
   userId: string;
-  completed: boolean;
-  items: ShoppingListItem[];
   createdAt: string;
   updatedAt: string;
+  items?: ShoppingListItem[];
 }
 
 export interface ShoppingListItem {
@@ -102,16 +90,16 @@ export interface ShoppingListItem {
   ingredientId: string;
   quantity: number;
   unit: string;
-  purchased: boolean;
+  isPurchased: boolean;
   notes?: string;
-  ingredient: Ingredient;
+  ingredient?: Ingredient;
 }
 
-// API response types
-export interface ApiResponse<T> {
-  data?: T;
-  message?: string;
-  error?: string;
+// API Response Types
+export interface AuthResponse {
+  user: User;
+  token: string;
+  message: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -126,26 +114,7 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// Auth types
-export interface LoginData {
-  email: string;
-  password: string;
-}
-
-export interface RegisterData {
-  email: string;
-  password: string;
-  name: string;
-  cookingSkillLevel: 'beginner' | 'intermediate' | 'advanced';
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-  message: string;
-}
-
-// Search types
+// Search and Filter Types
 export interface RecipeSearchParams {
   q?: string;
   cuisine?: string;
@@ -163,68 +132,21 @@ export interface RecipeSearchParams {
 export interface IngredientSearchParams {
   q?: string;
   category?: string;
+  dietaryRestriction?: string;
   page?: number;
   limit?: number;
 }
 
-// Form types
-export interface RecipeFormData {
-  title: string;
-  description?: string;
-  instructions: string;
-  prepTime: number;
-  cookTime: number;
-  servings: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  cuisine?: string;
-  imageUrl?: string;
-  calories?: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-  fiber?: number;
-  ingredients: {
-    ingredientId: string;
-    quantity: number;
-    unit: string;
-    notes?: string;
-  }[];
-  tags: string[];
+// Form Types
+export interface LoginFormData {
+  email: string;
+  password: string;
 }
 
-export interface ShoppingListFormData {
+export interface RegisterFormData {
   name: string;
-  items?: {
-    ingredientId: string;
-    quantity: number;
-    unit: string;
-    notes?: string;
-  }[];
-}
-
-// Shopping list generation
-export interface GenerateShoppingListData {
-  recipeIds: string[];
-  servingAdjustments?: Record<string, number>;
-  listName?: string;
-}
-
-// Ingredient suggestions
-export interface IngredientSuggestion {
-  original: Ingredient;
-  quantity: number;
-  unit: string;
-  substitutes: (Ingredient & {
-    substitutionRatio: number;
-    dietaryBenefit?: string;
-    flavorProfile?: string;
-  })[];
-}
-
-export interface SuggestionResponse {
-  suggestions: IngredientSuggestion[];
-  userRestrictions: {
-    dietary: string[];
-    allergies: string[];
-  };
+  email: string;
+  password: string;
+  confirmPassword: string;
+  cookingSkillLevel: 'beginner' | 'intermediate' | 'advanced';
 } 

@@ -18,7 +18,7 @@ export const useRecipes = (params: RecipeSearchParams = {}) => {
     queryKey: recipeKeys.list(params),
     queryFn: () => RecipeService.searchRecipes(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 };
 
@@ -115,7 +115,7 @@ export const useToggleFavorite = () => {
           if (oldData) {
             return {
               ...oldData,
-              recipes: oldData.recipes.map((recipe) =>
+              data: oldData.data.map((recipe: Recipe) =>
                 recipe.id === recipeId
                   ? { ...recipe, isFavorited: result.isFavorited }
                   : recipe

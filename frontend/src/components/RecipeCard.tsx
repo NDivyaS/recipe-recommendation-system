@@ -100,7 +100,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe, showFavorite = true }) 
           </div>
 
           {/* Rating Badge (if available) */}
-          {recipe.rating && (
+          {recipe.rating && recipe.rating > 0 && (
             <div className="absolute bottom-3 left-3 bg-black bg-opacity-75 text-white px-2 py-1 rounded-full flex items-center space-x-1">
               <Star className="h-3 w-3 fill-current text-yellow-400" />
               <span className="text-xs font-medium">{recipe.rating.toFixed(1)}</span>
